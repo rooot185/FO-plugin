@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "AI Sidebar",
+  "version": "1.0",
+  "description": "An AI chat and rating sidebar.",
+  "permissions": ["sidePanel", "contextMenus"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open AI Sidebar"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
