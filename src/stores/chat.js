@@ -64,6 +64,16 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    clearMessages() {
+      this.messages = [{ id: Date.now(), text: '你好，我是财务处AI助手，有什么可以帮助您的吗？', sender: 'bot' }];
+      this.newMessage = '';
+      this.isTyping = false;
+      this.feedbackText = '';
+      this.currentBotMessageForRating = null;
+      this.currentQuestionForRating = null;
+      this.showFeedbackDialog = false;
+    },
+
     async rate(rating, botMessage, userQuestion) {
       console.log(`Rated: ${rating}`);
       this.currentBotMessageForRating = botMessage;
