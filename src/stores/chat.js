@@ -11,6 +11,7 @@ export const useChatStore = defineStore('chat', {
     currentBotMessageForRating: null, // New: Stores the bot message being rated
     currentQuestionForRating: null, // New: Stores the user question associated with the bot message
     showFeedbackDialog: false, // New: Controls the visibility of the feedback dialog
+    currentUser: 'testUser', // New: Placeholder for the current user's account
   }),
   actions: {
     async sendMessage() {
@@ -36,10 +37,7 @@ export const useChatStore = defineStore('chat', {
           },
           body: JSON.stringify({
             prompt: prompt,
-            history: this.messages.slice(0, -2).map(m => ({
-              role: m.sender === 'user' ? 'user' : 'assistant',
-              content: m.text,
-            })),
+
           }),
         });
         
@@ -145,6 +143,7 @@ export const useChatStore = defineStore('chat', {
           ...payload,
           botReply: this.currentBotMessageForRating.text,
           userQuestion: this.currentQuestionForRating ? this.currentQuestionForRating.text : 'N/A',
+          user: this.currentUser, // Add user account information
         };
 
         const response = await fetch('/api/feedback', {
