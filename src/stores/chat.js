@@ -28,71 +28,31 @@ export const useChatStore = defineStore('chat', {
       this.messages.push(botMessage);
 
       this.isTyping = true;
+
       try {
-        // Simulate a POST request to a backend API
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: prompt,
+        const eventSource = new EventSource(`/api/chat?prompt=${encodeURIComponent(prompt)}`);
 
-          }),
-        });
-        
-        // This is a mock implementation of SSE streaming.
-        // A real implementation would connect to an actual SSE endpoint.
-        // For demonstration, we simulate a ReadableStream.
-        const mockResponse = `这是一个模拟的流式响应 for: "${prompt}"`;
-        const stream = new ReadableStream({
-          start(controller) {
-            let i = 0;
-            const interval = setInterval(() => {
-              if (i < mockResponse.length) {
-                const chunk = mockResponse[i];
-                controller.enqueue(`data: {"chunk": "${chunk}"}\n\n`);
-                i++;
-              } else {
-                controller.enqueue('data: {"event": "done"}\n\n');
-                clearInterval(interval);
-                controller.close();
-              }
-            }, 50);
-          }
-        });
-
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        
-        const processStream = async () => {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunkText = decoder.decode(value);
-            const lines = chunkText.split('\n\n').filter(line => line.startsWith('data:'));
-
-            for (const line of lines) {
-              const jsonStr = line.replace('data: ', '');
-              try {
-                const data = JSON.parse(jsonStr);
-                if (data.event === 'done') {
-                  return;
-                }
-                botMessage.text += data.chunk;
-              } catch (e) {
-                // Ignore parsing errors for this mock
-              }
-            }
+        eventSource.onmessage = (event) => {
+          // Assuming the server sends data in the format: data: {"chunk": "some text"}
+          const data = JSON.parse(event.data);
+          
+          if (data.event === 'done') {
+            eventSource.close();
+            this.isTyping = false;
+          } else if (data.chunk) {
+            botMessage.text += data.chunk;
           }
         };
-        await processStream();
 
+        eventSource.onerror = (error) => {
+          console.error('EventSource failed:', error);
+          botMessage.text = 'Error: Could not connect to the server.';
+          eventSource.close();
+          this.isTyping = false;
+        };
       } catch (error) {
         botMessage.text = 'Error: Could not connect to the server.';
         console.error('API call failed:', error);
-      } finally {
         this.isTyping = false;
       }
     },
