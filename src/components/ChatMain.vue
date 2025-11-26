@@ -47,7 +47,7 @@
         <textarea 
           v-model="chatStore.newMessage" 
           @keydown="handleKeydown"
-          placeholder="请输入您的问题 (Shift+Enter 换行)"
+          placeholder="请输入您的问题"
           rows="1"
         ></textarea>
         <button @click="sendMessage" :disabled="chatStore.newMessage.trim() === ''">
@@ -176,6 +176,8 @@ watch(() => chatStore.isTyping, scrollToBottom);
   margin: 0;
   font-size: 1.2em;
   color: #333;
+  flex-grow: 1; /* Allow h2 to take available space */
+  text-align: center; /* Center the text */
 }
 
 .header-controls {
@@ -306,6 +308,8 @@ watch(() => chatStore.isTyping, scrollToBottom);
   display: flex;
   align-items: flex-end;
   gap: 10px;
+  background-color: #ffffff; /* Explicitly set background to white */
+  color: #333; /* Ensure text is dark for readability */
 }
 
 #input-area textarea {
@@ -318,6 +322,8 @@ watch(() => chatStore.isTyping, scrollToBottom);
   overflow-y: hidden; /* Hide scrollbar but allow content to expand */
   min-height: 40px; /* Minimum height for one line */
   max-height: 120px; /* Max height before scrolling */
+  background-color: #ffffff; /* Explicitly set background to white */
+  color: #333; /* Ensure text is dark for readability */
 }
 
 #input-area textarea:focus {
