@@ -33,14 +33,21 @@ export const useChatStore = defineStore('chat', {
         const eventSource = new EventSource(`/api/chat?prompt=${encodeURIComponent(prompt)}`);
 
         eventSource.onmessage = (event) => {
-          // Assuming the server sends data in the format: data: {"chunk": "some text"}
-          const data = JSON.parse(event.data);
-          
-          if (data.event === 'done') {
-            eventSource.close();
-            this.isTyping = false;
-          } else if (data.chunk) {
-            botMessage.text += data.chunk;
+          try {
+            const data = JSON.parse(event.data);
+
+            // Handle message chunks
+            if (data.event === 'message' && data.answer) {
+              botMessage.text += data.answer;
+            }
+
+            // Handle end of message stream
+            if (data.event === 'message_end') {
+              eventSource.close();
+              this.isTyping = false;
+            }
+          } catch (e) {
+            console.error('Failed to parse SSE data:', event.data, e);
           }
         };
 
