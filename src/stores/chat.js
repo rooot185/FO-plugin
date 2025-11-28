@@ -25,90 +25,143 @@ export const useChatStore = defineStore('chat', {
       this.feedbackText = '';
 
       // Create a single message object with query and an empty answer
-      const message = { id: Date.now(), query: prompt, answer: '' };
+      const message = { id: '', query: prompt, answer: '' };
       this.messages.push(message);
       
       // If no conversation ID exists, create a new one for this session
       if (!this.currentConversationId) {
-        this.currentConversationId = `conv-${Date.now()}`;
+        this.currentConversationId = "";
       }
 
       this.isTyping = true;
 
       try {
-        const eventSource = new EventSource(`${API_BASE_URL}/api/chat?prompt=${encodeURIComponent(prompt)}&user=${encodeURIComponent(this.currentUser)}&conversationId=${encodeURIComponent(this.currentConversationId)}`);
+        // Use POST request with ReadableStream for SSE-like streaming
+        console.log('Sending request to:', `${API_BASE_URL}/api/chat`);
+        console.log('Request body:', {
+          prompt: prompt,
+          user: this.currentUser,
+          conversationId: this.currentConversationId
+        });
 
-        eventSource.onmessage = (event) => {
-          if (!event.data) {
-            return;
-          }
+        const response = await fetch(`${API_BASE_URL}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            user: this.currentUser,
+            conversationId: this.currentConversationId
+          }),
+        });
 
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Response error:', errorText);
+          throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        }
+
+        if (!response.body) {
+          throw new Error('Response body is null');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        const processStream = async () => {
           try {
-            const data = JSON.parse(event.data);
+            while (true) {
+              const { done, value } = await reader.read();
 
-            switch (data.event) {
-              case 'message':
-                if (data.answer) {
-                  message.answer += data.answer;
-                }
-                // Update message ID with the one from the server for rating purposes
-                if (data.message_id) {
-                  message.id = data.message_id;
-                }
-                if (data.conversation_id) {
-                  this.currentConversationId = data.conversation_id;
-                }
-                break;
-
-              case 'message_end':
-                eventSource.close();
+              if (done) {
                 this.isTyping = false;
                 break;
-              
-              case 'message_replace':
-                // Find the message being replaced and update its content
-                const messageToReplace = this.messages.find(m => m.id === data.message_id);
-                if (messageToReplace) {
-                  messageToReplace.answer = data.answer;
+              }
+
+              const chunk = decoder.decode(value, { stream: true });
+              console.log('Received chunk:', chunk);
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const dataStr = line.slice(6); // Remove 'data: ' prefix
+                  if (dataStr.trim() === '') continue;
+
+                  console.log('Parsing data:', dataStr);
+                  try {
+                    const data = JSON.parse(dataStr);
+
+                    switch (data.event) {
+                      case 'message':
+                        if (data.answer) {
+                          message.answer += data.answer;
+                        }
+                        // Update message ID with the one from the server for rating purposes
+                        if (data.message_id) {
+                          message.id = data.message_id;
+                        }
+                        if (data.conversation_id) {
+                          this.currentConversationId = data.conversation_id;
+                        }
+                        break;
+
+                      case 'message_end':
+                        this.isTyping = false;
+                        reader.cancel();
+                        return;
+
+                      case 'message_replace':
+                        // Find the message being replaced and update its content
+                        const messageToReplace = this.messages.find(m => m.id === data.message_id);
+                        if (messageToReplace) {
+                          messageToReplace.answer = data.answer;
+                        }
+                        break;
+
+                      case 'error':
+                        console.error('Received error event:', data);
+                        message.answer = `Error: ${data.message}`;
+                        this.isTyping = false;
+                        reader.cancel();
+                        return;
+
+                      case 'ping':
+                        // Keep-alive event, do nothing
+                        break;
+
+                      // Log workflow and other events for debugging
+                      case 'workflow_started':
+                      case 'node_started':
+                      case 'node_finished':
+                      case 'workflow_finished':
+                      case 'message_file':
+                      case 'tts_message':
+                      case 'tts_message_end':
+                        console.log('Received SSE Event:', data);
+                        break;
+
+                      default:
+                        // Ignore unknown events
+                        break;
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse SSE data:', dataStr, e);
+                  }
                 }
-                break;
-
-              case 'error':
-                message.answer = `Error: ${data.message}`;
-                eventSource.close();
-                this.isTyping = false;
-                break;
-              
-              case 'ping':
-                // Keep-alive event, do nothing
-                break;
-              
-              // Log workflow and other events for debugging
-              case 'workflow_started':
-              case 'node_started':
-              case 'node_finished':
-              case 'workflow_finished':
-              case 'message_file':
-              case 'tts_message':
-              case 'tts_message_end':
-                console.log('Received SSE Event:', data);
-                break;
-
-              default:
-                // Ignore unknown events
-                break;
+              }
             }
-          } catch (e) {
-            console.error('Failed to parse SSE data:', event.data, e);
+          } catch (error) {
+            console.error('Stream reading failed:', error);
+            message.answer = 'Error: Could not connect to the server.';
+            this.isTyping = false;
           }
         };
 
-        eventSource.onerror = (error) => {
-          console.error('EventSource failed:', error);
-          message.answer = 'Error: Could not connect to the server.';
-          eventSource.close();
-          this.isTyping = false;
-        };
+        processStream();
       } catch (error) {
         message.answer = 'Error: Could not connect to the server.';
         console.error('API call failed:', error);
