@@ -10,7 +10,7 @@
       <ul v-else-if="conversations.length">
         <li v-for="conversation in conversations" :key="conversation.id" @click="selectConversation(conversation.id)" class="history-item">
           <h3>{{ conversation.title || '无标题会话' }}</h3>
-          <p>最后更新: {{ new Date(conversation.lastUpdated).toLocaleString() }}</p>
+          <!-- <p>最后更新: {{ new Date(conversation.lastUpdated).toLocaleString() }}</p> -->
         </li>
       </ul>
       <p v-else>没有历史会话记录。</p>
@@ -78,6 +78,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%; /* Ensure it takes full width */
   background-color: #f0f2f5;
 }
 
