@@ -24,6 +24,8 @@ import { useRouter } from 'vue-router';
 import { useChatStore } from '../stores/chat';
 import { ElMessage } from 'element-plus';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const router = useRouter();
 const chatStore = useChatStore();
 
@@ -35,7 +37,7 @@ const fetchConversations = async () => {
   try {
     loading.value = true;
     error.value = null;
-    const response = await fetch('/api/history/conversations'); // TODO: Replace with actual API endpoint
+    const response = await fetch(`${API_BASE_URL}/api/history/conversations?user=${encodeURIComponent(chatStore.currentUser)}`); // Include user as query parameter
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -51,7 +53,7 @@ const fetchConversations = async () => {
 
 const selectConversation = async (conversationId) => {
   try {
-    const response = await fetch(`/api/history/conversations/${conversationId}`); // TODO: Replace with actual API endpoint
+    const response = await fetch(`${API_BASE_URL}/api/history/conversations/${conversationId}?user=${encodeURIComponent(chatStore.currentUser)}`); // Include user as query parameter
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
