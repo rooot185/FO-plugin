@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
-    messages: [{ id: 1, text: '你好，我是财务处AI助手，有什么可以帮助您的吗？', sender: 'bot' }],
+    messages: [{ id: 1, query: '', answer: '你好，我是财务处AI助手，有什么可以帮助您的吗？' }],
     newMessage: '',//用户正在输入的新消息
     isTyping: false, // To show a typing indicator
     // showFeedbackInput: false, // Replaced by showFeedbackDialog
@@ -12,39 +14,89 @@ export const useChatStore = defineStore('chat', {
     currentQuestionForRating: null, // New: Stores the user question associated with the bot message
     showFeedbackDialog: false, // New: Controls the visibility of the feedback dialog
     currentUser: 'testUser', // New: Placeholder for the current user's account
+    currentConversationId: null, // New: Stores the ID of the current conversation
   }),
   actions: {
     async sendMessage() {
       if (this.newMessage.trim() === '') return;
 
-      const userMessage = { id: Date.now(), text: this.newMessage, sender: 'user' };
-      this.messages.push(userMessage);
-      
       const prompt = this.newMessage;
       this.newMessage = '';
       this.feedbackText = '';
 
-      const botMessage = { id: Date.now() + 1, text: '', sender: 'bot' };
-      this.messages.push(botMessage);
+      // Create a single message object with query and an empty answer
+      const message = { id: Date.now(), query: prompt, answer: '' };
+      this.messages.push(message);
+      
+      // If no conversation ID exists, create a new one for this session
+      if (!this.currentConversationId) {
+        this.currentConversationId = `conv-${Date.now()}`;
+      }
 
       this.isTyping = true;
 
       try {
-        const eventSource = new EventSource(`/api/chat?prompt=${encodeURIComponent(prompt)}`);
+        const eventSource = new EventSource(`${API_BASE_URL}/api/chat?prompt=${encodeURIComponent(prompt)}&user=${encodeURIComponent(this.currentUser)}&conversationId=${encodeURIComponent(this.currentConversationId)}`);
 
         eventSource.onmessage = (event) => {
+          if (!event.data) {
+            return;
+          }
+
           try {
             const data = JSON.parse(event.data);
 
-            // Handle message chunks
-            if (data.event === 'message' && data.answer) {
-              botMessage.text += data.answer;
-            }
+            switch (data.event) {
+              case 'message':
+                if (data.answer) {
+                  message.answer += data.answer;
+                }
+                // Update message ID with the one from the server for rating purposes
+                if (data.message_id) {
+                  message.id = data.message_id;
+                }
+                if (data.conversation_id) {
+                  this.currentConversationId = data.conversation_id;
+                }
+                break;
 
-            // Handle end of message stream
-            if (data.event === 'message_end') {
-              eventSource.close();
-              this.isTyping = false;
+              case 'message_end':
+                eventSource.close();
+                this.isTyping = false;
+                break;
+              
+              case 'message_replace':
+                // Find the message being replaced and update its content
+                const messageToReplace = this.messages.find(m => m.id === data.message_id);
+                if (messageToReplace) {
+                  messageToReplace.answer = data.answer;
+                }
+                break;
+
+              case 'error':
+                message.answer = `Error: ${data.message}`;
+                eventSource.close();
+                this.isTyping = false;
+                break;
+              
+              case 'ping':
+                // Keep-alive event, do nothing
+                break;
+              
+              // Log workflow and other events for debugging
+              case 'workflow_started':
+              case 'node_started':
+              case 'node_finished':
+              case 'workflow_finished':
+              case 'message_file':
+              case 'tts_message':
+              case 'tts_message_end':
+                console.log('Received SSE Event:', data);
+                break;
+
+              default:
+                // Ignore unknown events
+                break;
             }
           } catch (e) {
             console.error('Failed to parse SSE data:', event.data, e);
@@ -53,19 +105,19 @@ export const useChatStore = defineStore('chat', {
 
         eventSource.onerror = (error) => {
           console.error('EventSource failed:', error);
-          botMessage.text = 'Error: Could not connect to the server.';
+          message.answer = 'Error: Could not connect to the server.';
           eventSource.close();
           this.isTyping = false;
         };
       } catch (error) {
-        botMessage.text = 'Error: Could not connect to the server.';
+        message.answer = 'Error: Could not connect to the server.';
         console.error('API call failed:', error);
         this.isTyping = false;
       }
     },
 
     clearMessages() {
-      this.messages = [{ id: Date.now(), text: '你好，我是财务处AI助手，有什么可以帮助您的吗？', sender: 'bot' }];
+      this.messages = [{ id: Date.now(), query: '', answer: '你好，我是财务处AI助手，有什么可以帮助您的吗？' }];
       this.newMessage = '';
       this.isTyping = false;
       this.feedbackText = '';
@@ -74,10 +126,10 @@ export const useChatStore = defineStore('chat', {
       this.showFeedbackDialog = false;
     },
 
-    async rate(rating, botMessage, userQuestion) {
+    async rate(rating, message) {
       console.log(`Rated: ${rating}`);
-      this.currentBotMessageForRating = botMessage;
-      this.currentQuestionForRating = userQuestion;
+      this.currentBotMessageForRating = message;
+      // this.currentQuestionForRating can be removed as message.query holds the question
 
       if (rating === 'down') {
         this.showFeedbackDialog = true; // Show the feedback dialog
@@ -118,12 +170,12 @@ export const useChatStore = defineStore('chat', {
 
         const feedbackPayload = {
           ...payload,
-          botReply: this.currentBotMessageForRating.text,
-          userQuestion: this.currentQuestionForRating ? this.currentQuestionForRating.text : 'N/A',
+          messageId: this.currentBotMessageForRating.id, // Send message ID
+          conversationId: this.currentConversationId, // Send conversation ID
           user: this.currentUser, // Add user account information
         };
 
-        const response = await fetch('/api/feedback', {
+        const response = await fetch(`${API_BASE_URL}/api/feedback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

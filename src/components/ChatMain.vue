@@ -18,21 +18,28 @@
     </header>
     
     <div id="message-list" ref="messageList">
-      <div v-for="(message, index) in chatStore.messages" :key="message.id" 
-           class="message-wrapper" 
-           :class="`message-${message.sender}`"
-           @mouseenter="hoveredMessageId = message.id"
-           @mouseleave="hoveredMessageId = null">
-        <div class="message-bubble">
-          <div v-if="message.sender === 'bot'" v-html="renderMarkdown(message.text)"></div>
-          <p v-else>{{ message.text }}</p>
-          
-          <div v-if="message.sender === 'bot' && hoveredMessageId === message.id" class="feedback-controls-inline">
-            <button @click="chatStore.rate('up', message, chatStore.messages[index - 1])" class="feedback-btn">👍</button>
-            <button @click="chatStore.rate('down', message, chatStore.messages[index - 1])" class="feedback-btn">👎</button>
+      <template v-for="message in chatStore.messages" :key="message.id">
+        <!-- User Message -->
+        <div v-if="message.query" class="message-wrapper message-user">
+          <div class="message-bubble">
+            <p>{{ message.query }}</p>
           </div>
         </div>
-      </div>
+
+        <!-- Bot Message -->
+        <div v-if="message.answer" 
+             class="message-wrapper message-bot"
+             @mouseenter="hoveredMessageId = message.id"
+             @mouseleave="hoveredMessageId = null">
+          <div class="message-bubble">
+            <div v-html="renderMarkdown(message.answer)"></div>
+            <div v-if="hoveredMessageId === message.id" class="feedback-controls-inline">
+              <button @click="chatStore.rate('up', message)" class="feedback-btn">👍</button>
+              <button @click="chatStore.rate('down', message)" class="feedback-btn">👎</button>
+            </div>
+          </div>
+        </div>
+      </template>
       <div v-if="chatStore.isTyping" class="message-wrapper message-bot">
         <div class="message-bubble">
           <div class="typing-indicator">
