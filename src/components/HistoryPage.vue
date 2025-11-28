@@ -8,7 +8,7 @@
       <div v-if="loading" class="loading-indicator">加载中...</div>
       <div v-else-if="error" class="error-message">{{ error }}</div>
       <ul v-else-if="conversations.length">
-        <li v-for="conversation in conversations" :key="conversation.id" @click="selectConversation(conversation.id)" class="history-item">
+        <li v-for="conversation in conversations" :key="conversation.conversation_id" @click="selectConversation(conversation.conversation_id)" class="history-item">
           <h3>{{ conversation.title || '无标题会话' }}</h3>
           <!-- <p>最后更新: {{ new Date(conversation.lastUpdated).toLocaleString() }}</p> -->
         </li>
@@ -41,7 +41,12 @@ const fetchConversations = async () => {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    conversations.value = await response.json();
+    const result = await response.json();
+    if (result.code === 0) {
+      conversations.value = result.data;
+    } else {
+      throw new Error(result.message || 'Failed to fetch conversations');
+    }
   } catch (err) {
     console.error('Failed to fetch conversations:', err);
     error.value = '加载历史会话失败。';
@@ -57,8 +62,12 @@ const selectConversation = async (conversationId) => {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const historyMessages = await response.json();
-    chatStore.messages = historyMessages; // Load historical messages into the chat store
+    const result = await response.json();
+    if (result.code === 0) {
+      chatStore.messages = result.data; // Load historical messages into the chat store
+    } else {
+      throw new Error(result.message || 'Failed to load conversation history');
+    }
     router.push('/'); // Navigate back to the main chat page
   } catch (err) {
     console.error('Failed to load conversation history:', err);
