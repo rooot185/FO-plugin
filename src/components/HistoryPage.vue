@@ -64,6 +64,7 @@ const selectConversation = async (conversationId) => {
     }
     const result = await response.json();
     if (result.code === 0) {
+      chatStore.currentConversationId = conversationId;
       chatStore.messages = result.data; // Load historical messages into the chat store
     } else {
       throw new Error(result.message || 'Failed to load conversation history');
