@@ -1,14 +1,14 @@
 :root {
-  --background-primary: #1E1F22;
-  --background-secondary: #2B2D31;
-  --background-tertiary: #313338;
-  --text-primary: #F2F3F5;
-  --text-secondary: #B5BAC1;
-  --brand-accent: #5865F2;
-  --brand-accent-hover: #4752C4;
-  --success-color: #2DC771;
-  --error-color: #F23F42;
-  --border-color: #404249;
+  --background-primary: #f0f2f5; /* Light grey background for the main chat area */
+  --background-secondary: #ffffff; /* White background for elements like header, footer, message bubbles */
+  --background-tertiary: #e9ebee; /* Slightly darker grey for borders or subtle separations */
+  --text-primary: #333333; /* Dark text for readability */
+  --text-secondary: #666666; /* Secondary text color, e.g., for placeholders or less important info */
+  --brand-accent: #409eff; /* Element Plus primary blue for accents */
+  --brand-accent-hover: #66b1ff; /* Lighter blue for hover states */
+  --success-color: #67c23a; /* Green for success actions */
+  --error-color: #f56c6c; /* Red for error actions */
+  --border-color: #e4e7ed; /* Light grey for borders */
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 

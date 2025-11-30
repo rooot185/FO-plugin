@@ -34,8 +34,12 @@
           <div class="message-bubble">
             <div v-html="renderMarkdown(message.answer)"></div>
             <div v-if="hoveredMessageId === message.id" class="feedback-controls-inline">
-              <button @click="chatStore.rate('up', message)" class="feedback-btn">👍</button>
-              <button @click="chatStore.rate('down', message)" class="feedback-btn">👎</button>
+              <button @click="chatStore.rate('up', message)" class="feedback-btn">
+                <font-awesome-icon :icon="['fas', 'thumbs-up']" />
+              </button>
+              <button @click="chatStore.rate('down', message)" class="feedback-btn">
+                <font-awesome-icon :icon="['fas', 'thumbs-down']" />
+              </button>
             </div>
           </div>
         </div>
@@ -172,44 +176,59 @@ watch(() => chatStore.isTyping, scrollToBottom);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  flex-shrink: 0; /* Prevent header from shrinking */
+  padding: 15px 20px; /* Increased padding for better spacing */
+  background-color: var(--background-secondary); /* Use background-secondary (white) */
+  border-bottom: 1px solid var(--border-color); /* Use border color variable */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Slightly stronger, softer shadow */
+  flex-shrink: 0;
+  z-index: 10; /* Ensure header is above other content */
 }
 
 #chat-header h2 {
   margin: 0;
-  font-size: 1.2em;
-  color: #333;
-  flex-grow: 1; /* Allow h2 to take available space */
-  text-align: center; /* Center the text */
+  font-size: 1.3em; /* Slightly larger font for title */
+  color: var(--text-primary); /* Use primary text color */
+  flex-grow: 1;
+  text-align: center;
+  font-weight: 600; /* Make title bolder */
 }
 
 .header-controls {
   display: flex;
-  gap: 10px; /* Space between controls */
+  gap: 10px;
   align-items: center;
 }
 
 .el-dropdown-link {
   cursor: pointer;
-  color: var(--el-color-primary);
+  color: var(--brand-accent); /* Use brand accent color for dropdown icon */
   display: flex;
   align-items: center;
+}
+
+.el-button.is-circle {
+  border: none; /* Remove default border for circle button */
+  background-color: transparent; /* Transparent background */
+  color: var(--text-secondary); /* Secondary text color for icon */
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.el-button.is-circle:hover {
+  color: var(--brand-accent); /* Accent color on hover */
+  background-color: var(--background-tertiary); /* Subtle background on hover */
 }
 
 #message-list {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 20px; /* Slightly more padding */
   -webkit-overflow-scrolling: touch;
+  background-color: var(--background-primary); /* Use primary background color */
 }
 
 .message-wrapper {
   display: flex;
-  margin-bottom: 10px;
+  margin-bottom: 15px; /* Increased margin for better separation */
 }
 
 .message-user {
@@ -221,40 +240,46 @@ watch(() => chatStore.isTyping, scrollToBottom);
 }
 
 .message-bubble {
-  max-width: 80%;
-  padding: 10px 15px;
-  border-radius: 20px;
+  max-width: 75%; /* Slightly smaller max-width */
+  padding: 12px 18px; /* Adjusted padding */
+  border-radius: 18px; /* More rounded corners */
   line-height: 1.5;
   word-wrap: break-word;
-  white-space: pre-wrap; /* Preserve whitespace and line breaks */
+  white-space: pre-wrap;
+  font-size: 0.95em; /* Slightly smaller font size */
 }
 
 .message-user .message-bubble {
-  background-color: #409eff;
+  background-color: var(--brand-accent); /* Use brand accent color */
   color: white;
-  border-bottom-right-radius: 2px;
+  border-top-right-radius: 2px; /* Keep a slight corner for user message */
+  border-bottom-right-radius: 18px; /* Make the bottom right round */
 }
 
 .message-bot .message-bubble {
-  background-color: #ffffff;
-  color: #333;
-  border: 1px solid #e0e0e0;
-  border-bottom-left-radius: 2px;
+  background-color: var(--background-secondary); /* Use background-secondary (white) */
+  color: var(--text-primary); /* Use primary text color */
+  border: 1px solid var(--border-color); /* Use border color variable */
+  border-top-left-radius: 2px; /* Keep a slight corner for bot message */
+  border-bottom-left-radius: 18px; /* Make the bottom left round */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); /* Subtle shadow for bot messages */
 }
 
 /* Markdown and code block styling */
 .message-bot .message-bubble :deep(pre) {
-  background-color: #282c34;
-  color: #abb2bf;
-  padding: 10px;
-  border-radius: 5px;
+  background-color: #f8f8f8; /* Lighter background for code blocks */
+  color: #333; /* Darker text for code blocks */
+  padding: 12px;
+  border-radius: 8px;
   overflow-x: auto;
   margin-top: 10px;
+  border: 1px solid #e0eeef; /* Subtle border for code blocks */
 }
 
 .message-bot .message-bubble :deep(code) {
   font-family: 'Fira Code', 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
   font-size: 0.9em;
+  color: inherit;
 }
 
 .message-bot .message-bubble :deep(pre code) {
@@ -263,27 +288,28 @@ watch(() => chatStore.isTyping, scrollToBottom);
 }
 
 .message-bot .message-bubble :deep(p) {
-  margin-bottom: 10px;
+  margin-bottom: 8px; /* Adjusted margin for paragraphs */
 }
 
 .message-bot .message-bubble :deep(p:last-child) {
   margin-bottom: 0;
 }
 
+/* Typing indicator for bot message */
 .typing-indicator {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 20px; /* Adjust height as needed */
+  justify-content: flex-start; /* Align left with bot messages */
+  height: 20px;
 }
 
 .typing-indicator span {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  background-color: #ccc;
+  width: 7px; /* Slightly larger dots */
+  height: 7px;
+  background-color: var(--text-secondary); /* Use secondary text color for dots */
   border-radius: 50%;
-  margin: 0 2px;
+  margin: 0 3px; /* Adjusted margin */
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
@@ -305,46 +331,55 @@ watch(() => chatStore.isTyping, scrollToBottom);
 }
 
 #chat-footer {
-  padding: 10px 15px;
-  border-top: 1px solid #e0e0e0;
-  background-color: #ffffff;
-  flex-shrink: 0; /* Prevent footer from shrinking */
+  padding: 15px 20px; /* Increased padding */
+  border-top: 1px solid var(--border-color); /* Use border color variable */
+  background-color: var(--background-secondary); /* Use background-secondary (white) */
+  flex-shrink: 0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow on top */
+  position: relative; /* For z-index if needed */
+  z-index: 10;
 }
 
 #input-area {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  background-color: #ffffff; /* Explicitly set background to white */
-  color: #333; /* Ensure text is dark for readability */
+  background-color: var(--background-secondary); /* Use background-secondary */
+  color: var(--text-primary); /* Use primary text color */
+  border: 1px solid var(--border-color); /* Add a border to the input area */
+  border-radius: 10px; /* Rounded corners for the whole input area */
+  padding: 8px; /* Padding inside the input area border */
 }
 
 #input-area textarea {
   flex-grow: 1;
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
-  padding: 10px;
+  border: none; /* Remove individual textarea border */
+  background-color: transparent; /* Transparent background */
+  color: var(--text-primary);
+  padding: 10px; /* Padding inside textarea */
   font-size: 1em;
   resize: none;
-  overflow-y: hidden; /* Hide scrollbar but allow content to expand */
-  min-height: 40px; /* Minimum height for one line */
-  max-height: 120px; /* Max height before scrolling */
-  background-color: #ffffff; /* Explicitly set background to white */
-  color: #333; /* Ensure text is dark for readability */
+  overflow-y: auto; /* Allow scrollbar to show when content overflows */
+  min-height: 44px; /* Minimum height for one line with padding */
+  max-height: 150px; /* Increased max height before scrolling */
+  line-height: 1.5; /* Ensure consistent line height */
+}
+
+#input-area textarea::placeholder {
+  color: var(--text-secondary); /* Use secondary text color for placeholder */
 }
 
 #input-area textarea:focus {
   outline: none;
-  border-color: #409eff;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+  /* Border and shadow moved to parent #input-area */
 }
 
 #input-area button {
-  background-color: #409eff;
+  background-color: var(--brand-accent); /* Use brand accent color */
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 8px; /* Rounded corners for button */
+  padding: 10px 14px; /* Adjusted padding for button */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -354,41 +389,143 @@ watch(() => chatStore.isTyping, scrollToBottom);
 }
 
 #input-area button:hover:not(:disabled) {
-  background-color: #66b1ff;
+  background-color: var(--brand-accent-hover); /* Use brand accent hover color */
 }
 
 #input-area button:disabled {
-  background-color: #a0cfff;
+  background-color: var(--background-tertiary); /* Lighter disabled background */
+  color: var(--text-secondary); /* Lighter text color for disabled state */
   cursor: not-allowed;
+  opacity: 0.7; /* Slightly more opaque disabled state */
+}
+
+#input-area button svg {
+  fill: currentColor; /* Ensure SVG icon color matches button text color */
+  width: 20px;
+  height: 20px;
 }
 
 .feedback-controls-inline {
   display: flex;
-  gap: 8px;
-  margin-top: 5px;
-  justify-content: flex-end; /* Align to the right of the bubble */
+  gap: 6px; /* Slightly smaller gap */
+  margin-top: 8px; /* Adjusted margin */
+  justify-content: flex-end;
+  opacity: 0; /* Initially hidden */
+  transition: opacity 0.2s ease;
+}
+
+/* Show feedback controls on message bubble hover */
+.message-bot:hover .feedback-controls-inline {
+  opacity: 1;
 }
 
 .message-bot .feedback-controls-inline {
-  justify-content: flex-start; /* Align to the left for bot messages */
+  justify-content: flex-start;
 }
 
 .feedback-btn {
-  background: none;
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  padding: 3px 8px;
+  background-color: var(--background-tertiary); /* Use tertiary background for subtle look */
+  border: 1px solid var(--border-color); /* Use border color variable */
+  color: var(--text-secondary); /* Secondary text color */
+  border-radius: 6px; /* Slightly more rounded */
+  padding: 6px 8px; /* Adjusted padding for icons */
   cursor: pointer;
-  font-size: 0.8em;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  display: flex; /* Add flex to center icon */
+  align-items: center; /* Center icon vertically */
+  justify-content: center; /* Center icon horizontally */
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .feedback-btn:hover {
-  background-color: #f0f2f5;
-  border-color: #c0c4cc;
+  background-color: var(--background-primary); /* Primary background on hover */
+  border-color: var(--brand-accent); /* Accent border on hover */
+  color: var(--brand-accent); /* Accent color on hover */
 }
 
 .el-dialog__footer {
   text-align: right;
+}
+
+/* Element Plus Dialog Overrides */
+.el-dialog {
+  border-radius: 12px; /* Rounded corners for the dialog */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15); /* More prominent shadow */
+}
+
+.el-dialog__header {
+  padding: 20px 25px 10px; /* Adjusted padding */
+  border-bottom: 1px solid var(--border-color); /* Use border color variable */
+}
+
+.el-dialog__title {
+  color: var(--text-primary); /* Primary text color for title */
+  font-weight: 600;
+  font-size: 1.15em;
+}
+
+.el-dialog__body {
+  padding: 20px 25px; /* Adjusted padding */
+  color: var(--text-primary); /* Primary text color for body */
+}
+
+.el-dialog__body span {
+  display: block;
+  margin-bottom: 15px; /* Spacing for the prompt text */
+  font-size: 0.95em;
+  color: var(--text-secondary); /* Secondary text color */
+}
+
+.el-dialog__footer {
+  padding: 15px 25px 20px; /* Adjusted padding */
+  border-top: 1px solid var(--border-color); /* Use border color variable */
+}
+
+.el-input__inner {
+  background-color: var(--background-primary); /* Match primary background */
+  border-color: var(--border-color); /* Match border color */
+  color: var(--text-primary); /* Match primary text color */
+}
+
+.el-textarea__inner {
+  background-color: var(--background-primary) !important; /* Force background for textarea */
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  padding: 10px 15px !important;
+  border-radius: 8px !important;
+  resize: vertical !important; /* Allow vertical resize */
+  min-height: 80px !important;
+}
+
+.el-textarea__inner::placeholder {
+  color: var(--text-secondary) !important;
+}
+
+.dialog-footer .el-button {
+  border-radius: 8px; /* Rounded buttons */
+  padding: 10px 20px;
+  font-size: 0.95em;
+  font-weight: 500;
+}
+
+.dialog-footer .el-button--primary {
+  background-color: var(--brand-accent); /* Use brand accent for primary button */
+  border-color: var(--brand-accent);
+}
+
+.dialog-footer .el-button--primary:hover {
+  background-color: var(--brand-accent-hover); /* Use brand accent hover */
+  border-color: var(--brand-accent-hover);
+}
+
+.dialog-footer .el-button:not(.el-button--primary) {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.dialog-footer .el-button:not(.el-button--primary):hover {
+  background-color: var(--background-tertiary);
+  border-color: var(--brand-accent);
+  color: var(--brand-accent);
 }
 </style>
