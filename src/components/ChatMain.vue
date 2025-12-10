@@ -3,6 +3,11 @@
     <header id="chat-header">
       <h2>财务处 AI 助手</h2>
       <div class="header-controls">
+        <!-- 显示当前用户 -->
+        <span v-if="chatStore.currentUser" class="user-info">
+          用户: {{ chatStore.currentUser }}
+        </span>
+
         <el-dropdown trigger="click" @command="handleCommand">
           <span class="el-dropdown-link">
             <el-button :icon="MoreFilled" circle />
@@ -11,6 +16,7 @@
             <el-dropdown-menu>
               <el-dropdown-item command="newChat">创建新对话</el-dropdown-item>
               <el-dropdown-item command="history">历史会话</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -100,6 +106,7 @@ import { marked } from 'marked';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 import { MoreFilled } from '@element-plus/icons-vue';
+import { ElMessageBox } from 'element-plus'
 
 const router = useRouter();
 const chatStore = useChatStore();
@@ -111,6 +118,28 @@ const handleCommand = (command) => {
     startNewChat();
   } else if (command === 'history') {
     goToHistory();
+  } else if (command === 'logout') {
+    handleLogout();
+  }
+};
+
+// 新增：登出处理方法
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm(
+        '确定要退出登录吗？',
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+    )
+
+    chatStore.logout()
+    // logout 方法已经处理了重定向到 /login
+  } catch {
+    // 用户点击了取消
   }
 };
 
@@ -197,6 +226,21 @@ watch(() => chatStore.isTyping, scrollToBottom);
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+/* 新增：用户信息样式 */
+.user-info {
+  padding: 4px 10px;
+  background: #f0f9ff;
+  border: 1px solid #409eff;
+  border-radius: 4px;
+  color: #409eff;
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .el-dropdown-link {

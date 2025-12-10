@@ -7,11 +7,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://8.130.98.142:8085',
         changeOrigin: true,
       },
       '/user': {
-        target: 'http://localhost:8080',
+        target: 'http://8.130.98.142:8085',
         changeOrigin: true,
       }
     }

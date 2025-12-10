@@ -13,11 +13,141 @@ export const useChatStore = defineStore('chat', {
     currentBotMessageForRating: null, // New: Stores the bot message being rated
     currentQuestionForRating: null, // New: Stores the user question associated with the bot message
     showFeedbackDialog: false, // New: Controls the visibility of the feedback dialog
-    currentUser: 'testUser', // New: Placeholder for the current user's account
+    // ========== 用户认证相关状态 ==========
+    currentUser: null, // 存储用户的 uid
+    isAuthenticated: false,
+    // ====================================
     currentConversationId: null, // New: Stores the ID of the current conversation
   }),
   actions: {
+    // ==================== 登录方法 ====================
+    async login(credentials) {
+      try {
+        console.log('发送登录请求:', credentials);
+
+        const response = await fetch(`${API_BASE_URL}/user/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: credentials.username,
+            password: credentials.password
+          }),
+        });
+
+        console.log('登录响应状态:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('登录失败:', errorText);
+          throw new Error(`登录失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('登录响应数据:', result);
+
+        // 根据提供的接口文档：{ code: 200, msg: "成功", data: { uid: "sample_uid", ... } }
+        if (result.code === 200) {
+          // 获取用户 uid
+          const uid = result.data?.username;
+
+          if (!uid) {
+            throw new Error('未能获取用户UID');
+          }
+
+          // 更新用户状态
+          this.currentUser = uid;
+          this.isAuthenticated = true;
+
+          console.log('登录成功，当前用户UID:', this.currentUser);
+
+          return true;
+        } else {
+          throw new Error(result.msg || '登录失败');
+        }
+      } catch (error) {
+        console.error('登录错误:', error);
+        throw error;
+      }
+    },
+
+    // ==================== 注册方法 ====================
+    async register(userData) {
+      try {
+        console.log('发送注册请求:', userData);
+
+        const response = await fetch(`${API_BASE_URL}/user/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: userData.username,
+            password: userData.password,
+            role: "TEACHER", // 默认值
+            department: null,
+            majorName: null
+          }),
+        });
+
+        console.log('注册响应状态:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('注册失败:', errorText);
+          throw new Error(`注册失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('注册响应数据:', result);
+
+        // 根据提供的接口文档：{ code: 200, msg: "成功", data: "specified_uid" }
+        if (result.code === 200) {
+          // 注册成功，返回的 data 字段就是 uid
+          const uid = result.data;
+
+          if (!uid) {
+            throw new Error('未能获取注册后的用户UID');
+          }
+
+          // 自动登录：设置当前用户状态
+          this.currentUser = uid;
+          this.isAuthenticated = true;
+
+          console.log('注册并自动登录成功，用户UID:', this.currentUser);
+
+          return true;
+        } else {
+          throw new Error(result.msg || '注册失败');
+        }
+      } catch (error) {
+        console.error('注册错误:', error);
+        throw error;
+      }
+    },
+
+    // ==================== 登出方法 ====================
+    logout() {
+      this.currentUser = null;
+      this.isAuthenticated = false;
+      this.clearMessages(); // 清空当前会话
+
+      // 重定向到登录页
+      if (window.location.hash !== '#/login') {
+        window.location.hash = '/login';
+      }
+    },
+
+    // ==================== 原有方法（保持不变） ====================
     async sendMessage() {
+      // 在发送消息前检查用户是否登录
+      if (!this.isAuthenticated) {
+        ElMessage.warning('请先登录');
+        window.location.hash = '/login';
+        return;
+      }
+
       if (this.newMessage.trim() === '') return;
 
       const prompt = this.newMessage;

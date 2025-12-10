@@ -3,7 +3,7 @@
   "name": "AI Sidebar",
   "version": "1.0",
   "description": "An AI chat and rating sidebar.",
-  "host_permissions": ["http://localhost:8080/*"],
+  "host_permissions": ["http://8.130.98.142:8085/*"],
   "permissions": ["sidePanel", "contextMenus"],
   "background": {
     "service_worker": "background.js"
