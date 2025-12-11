@@ -29,22 +29,30 @@
           <input
               v-model="loginForm.username"
               type="text"
-              placeholder="用户名"
+              placeholder="用户名 (4-16位字母、数字、下划线或连字符)"
               required
               class="form-input"
               :disabled="loading"
+              @input="clearValidation('username')"
           />
+          <div v-if="loginUsernameError" class="input-error">
+            {{ loginUsernameError }}
+          </div>
         </div>
 
         <div class="form-group">
           <input
               v-model="loginForm.password"
               type="password"
-              placeholder="密码"
+              placeholder="密码 (8-56位字母、数字或符号)"
               required
               class="form-input"
               :disabled="loading"
+              @input="clearValidation('password')"
           />
+          <div v-if="loginPasswordError" class="input-error">
+            {{ loginPasswordError }}
+          </div>
         </div>
 
         <button type="submit" class="submit-btn" :disabled="loading">
@@ -59,22 +67,30 @@
           <input
               v-model="registerForm.username"
               type="text"
-              placeholder="用户名"
+              placeholder="用户名 (4-16位字母、数字、下划线或连字符)"
               required
               class="form-input"
               :disabled="loading"
+              @input="clearValidation('regUsername')"
           />
+          <div v-if="regUsernameError" class="input-error">
+            {{ regUsernameError }}
+          </div>
         </div>
 
         <div class="form-group">
           <input
               v-model="registerForm.password"
               type="password"
-              placeholder="密码（至少6位）"
+              placeholder="密码 (8-56位字母、数字或符号)"
               required
               class="form-input"
               :disabled="loading"
+              @input="clearValidation('regPassword')"
           />
+          <div v-if="regPasswordError" class="input-error">
+            {{ regPasswordError }}
+          </div>
         </div>
 
         <div class="form-group">
@@ -85,7 +101,11 @@
               required
               class="form-input"
               :disabled="loading"
+              @input="clearValidation('confirmPassword')"
           />
+          <div v-if="confirmPasswordError" class="input-error">
+            {{ confirmPasswordError }}
+          </div>
         </div>
 
         <button type="submit" class="submit-btn" :disabled="loading">
@@ -127,6 +147,10 @@ const loginForm = reactive({
   password: ''
 })
 
+// 登录表单验证错误
+const loginUsernameError = ref('')
+const loginPasswordError = ref('')
+
 // 注册表单数据
 const registerForm = reactive({
   username: '',
@@ -134,11 +158,100 @@ const registerForm = reactive({
   confirmPassword: '' // 只需要这三个字段
 })
 
+// 注册表单验证错误
+const regUsernameError = ref('')
+const regPasswordError = ref('')
+const confirmPasswordError = ref('')
+
+// 正则表达式
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{4,16}$/
+const PASSWORD_REGEX = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{8,56}$/
+
+// 验证用户名
+const validateUsername = (username, isLogin = false) => {
+  if (!username.trim()) {
+    return '请输入用户名'
+  }
+
+  if (username.length < 4 || username.length > 16) {
+    return '用户名长度必须在4-16位之间'
+  }
+
+  if (!USERNAME_REGEX.test(username)) {
+    return '用户名只能包含字母、数字、下划线(_)或连字符(-)'
+  }
+
+  return ''
+}
+
+// 验证密码
+const validatePassword = (password, isLogin = false) => {
+  if (!password.trim()) {
+    return '请输入密码'
+  }
+
+  if (password.length < 8 || password.length > 56) {
+    return '密码长度必须在8-56位之间'
+  }
+
+  if (!isLogin && !PASSWORD_REGEX.test(password)) {
+    return '密码只能包含字母、数字和符号'
+  }
+
+  return ''
+}
+
+// 验证确认密码
+const validateConfirmPassword = (password, confirmPassword) => {
+  if (!confirmPassword.trim()) {
+    return '请确认密码'
+  }
+
+  if (password !== confirmPassword) {
+    return '两次输入的密码不一致'
+  }
+
+  return ''
+}
+
+// 清除特定验证错误
+const clearValidation = (field) => {
+  switch (field) {
+    case 'username':
+      loginUsernameError.value = ''
+      break
+    case 'password':
+      loginPasswordError.value = ''
+      break
+    case 'regUsername':
+      regUsernameError.value = ''
+      break
+    case 'regPassword':
+      regPasswordError.value = ''
+      break
+    case 'confirmPassword':
+      confirmPasswordError.value = ''
+      break
+  }
+
+  // 同时清除全局错误信息
+  if (errorMessage.value) {
+    errorMessage.value = ''
+  }
+}
+
 // 切换选项卡
 const switchTab = (tab) => {
   activeTab.value = tab
   errorMessage.value = ''
   successMessage.value = ''
+
+  // 清空所有验证错误
+  loginUsernameError.value = ''
+  loginPasswordError.value = ''
+  regUsernameError.value = ''
+  regPasswordError.value = ''
+  confirmPasswordError.value = ''
 
   // 清空表单
   if (tab === 'login') {
@@ -155,14 +268,19 @@ const switchTab = (tab) => {
 
 // 处理登录
 const handleLogin = async () => {
-  if (!loginForm.username.trim() || !loginForm.password.trim()) {
-    errorMessage.value = '请输入用户名和密码'
-    return
-  }
+  // 验证用户名
+  loginUsernameError.value = validateUsername(loginForm.username, true)
+  if (loginUsernameError.value) return
 
-  loading.value = true
+  // 验证密码
+  loginPasswordError.value = validatePassword(loginForm.password, true)
+  if (loginPasswordError.value) return
+
+  // 清除全局错误信息
   errorMessage.value = ''
   successMessage.value = ''
+
+  loading.value = true
 
   try {
     const success = await chatStore.login({
@@ -186,26 +304,21 @@ const handleLogin = async () => {
 
 // 处理注册
 const handleRegister = async () => {
-  // 基础验证
-  if (!registerForm.username.trim()) {
-    errorMessage.value = '请输入用户名'
-    return
-  }
+  let hasError = false
 
-  if (!registerForm.password.trim()) {
-    errorMessage.value = '请输入密码'
-    return
-  }
+  // 验证用户名
+  regUsernameError.value = validateUsername(registerForm.username)
+  if (regUsernameError.value) hasError = true
 
-  if (registerForm.password.length < 6) {
-    errorMessage.value = '密码长度至少6位'
-    return
-  }
+  // 验证密码
+  regPasswordError.value = validatePassword(registerForm.password)
+  if (regPasswordError.value) hasError = true
 
-  if (registerForm.password !== registerForm.confirmPassword) {
-    errorMessage.value = '两次输入的密码不一致'
-    return
-  }
+  // 验证确认密码
+  confirmPasswordError.value = validateConfirmPassword(registerForm.password, registerForm.confirmPassword)
+  if (confirmPasswordError.value) hasError = true
+
+  if (hasError) return
 
   loading.value = true
   errorMessage.value = ''
@@ -342,6 +455,13 @@ const handleRegister = async () => {
 .form-input:disabled {
   background-color: #f5f7fa;
   cursor: not-allowed;
+}
+
+.input-error {
+  color: #f56c6c;
+  font-size: 12px;
+  margin-top: 5px;
+  min-height: 18px;
 }
 
 .submit-btn {

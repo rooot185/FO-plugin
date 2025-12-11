@@ -3,6 +3,101 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
+/**
+ * 从Uint8Array缓冲区中提取所有完整的JSON事件字符串
+ * @param {Uint8Array} buffer - 累积的二进制缓冲区
+ * @param {TextDecoder} decoder - 用于解码字节为字符串的TextDecoder实例
+ * @returns {Object} 包含两个属性:
+ *   - eventStrings: Array<string> 提取出的完整JSON字符串数组
+ *   - remainingBuffer: Uint8Array 未处理完的剩余缓冲区
+ */
+const extractCompleteEventsFromBuffer = (buffer, decoder) => {
+  const PREFIX = new TextEncoder().encode('{"event":');
+  const PREFIX_LEN = PREFIX.length;
+  const SUFFIX = new TextEncoder().encode('"}'); // [34, 125]
+  const SUFFIX_LEN = SUFFIX.length;
+
+  const eventStrings = [];
+  let currentIndex = 0;
+
+  // 循环查找所有完整事件
+  while (currentIndex <= buffer.length - PREFIX_LEN) {
+    // 1. 查找事件前缀
+    let prefixFound = false;
+    for (let i = currentIndex; i <= buffer.length - PREFIX_LEN; i++) {
+      let match = true;
+      for (let j = 0; j < PREFIX_LEN; j++) {
+        if (buffer[i + j] !== PREFIX[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        currentIndex = i;
+        prefixFound = true;
+        break;
+      }
+    }
+
+    if (!prefixFound) {
+      // 没有找到更多前缀，剩余部分全部保留
+      break; // 直接退出循环，currentIndex就是未处理数据的起始位置
+    }
+
+    // 2. 查找事件结束标记
+    let eventEnd = -1;
+    const searchStart = currentIndex + PREFIX_LEN;
+    for (let i = searchStart; i <= buffer.length - SUFFIX_LEN; i++) {
+      let match = true;
+      for (let j = 0; j < SUFFIX_LEN; j++) {
+        if (buffer[i + j] !== SUFFIX[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        eventEnd = i + SUFFIX_LEN;
+        break;
+      }
+    }
+
+    if (eventEnd === -1) {
+      // 找到了前缀但没有完整结束，保留从当前前缀开始的数据
+      break; // 退出循环，currentIndex就是未处理数据的起始位置（包含这个不完整的前缀）
+    }
+
+    // 3. 提取并解码事件字符串
+    const eventBytes = buffer.slice(currentIndex, eventEnd);
+    try {
+      const eventStr = decoder.decode(eventBytes);
+      // 验证确实是有效的JSON格式（快速检查）
+      if (eventStr.startsWith('{"event":') && eventStr.endsWith('"}')) {
+        eventStrings.push(eventStr);
+        currentIndex = eventEnd; // 关键：成功处理后，移动currentIndex到事件结束位置
+      } else {
+        // 解码出来的字符串不符合预期，跳过这个位置继续搜索
+        currentIndex++;
+      }
+    } catch (e) {
+      // 解码失败，跳过当前字节继续搜索
+      console.warn('解码失败，跳过当前字节:', e);
+      currentIndex++;
+    }
+  }
+
+  // 计算剩余缓冲区：从currentIndex开始到最后
+  const remainingBuffer = currentIndex < buffer.length
+      ? buffer.slice(currentIndex)
+      : new Uint8Array(0);
+
+  console.log('提取到事件数量:', eventStrings.length, '剩余缓冲区大小:', remainingBuffer.length);
+
+  return {
+    eventStrings,
+    remainingBuffer
+  };
+};
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     messages: [{ id: 1, query: '', answer: '你好，我是财务处AI助手，有什么可以帮助您的吗？' }],
@@ -204,6 +299,10 @@ export const useChatStore = defineStore('chat', {
 
         const processStream = async () => {
           try {
+
+            let buffer = new Uint8Array(0);
+            const decoder = new TextDecoder();
+
             while (true) {
               const { done, value } = await reader.read();
 
@@ -212,32 +311,34 @@ export const useChatStore = defineStore('chat', {
                 break;
               }
 
-              const chunk = decoder.decode(value, { stream: true });
-              console.log('Received chunk:', chunk);
-              const lines = chunk.split('\n');
-
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const dataStr = line.slice(6); // Remove 'data: ' prefix
-                  if (dataStr.trim() === '') continue;
-
-                  console.log('Parsing data:', dataStr);
-                  try {
-                    const data = JSON.parse(dataStr);
-
-                    switch (data.event) {
-                      case 'message':
-                        if (data.answer) {
-                          message.answer += data.answer;
-                        }
-                        // Update message ID with the one from the server for rating purposes
-                        if (data.message_id) {
-                          message.id = data.message_id;
-                        }
-                        if (data.conversation_id) {
-                          this.currentConversationId = data.conversation_id;
-                        }
-                        break;
+              // 1. 将新数据追加到缓冲区
+              if (value && value.length) {
+                const newBuffer = new Uint8Array(buffer.length + value.length);
+                newBuffer.set(buffer);
+                newBuffer.set(value, buffer.length);
+                buffer = newBuffer;
+              }
+              // 2. 提取并处理所有完整事件
+              const extracted = extractCompleteEventsFromBuffer(buffer, decoder);
+              buffer = extracted.remainingBuffer;
+              for(const dataStr of extracted.eventStrings){
+                console.log('Parsing data:', dataStr);
+                try {
+                  const data = JSON.parse(dataStr);
+                  switch (data.event) {
+                    case 'message':
+                      if (data.answer) {
+                        message.answer += data.answer;
+                        this.messages = [...this.messages];
+                      }
+                      // Update message ID with the one from the server for rating purposes
+                      if (data.message_id) {
+                        message.id = data.message_id;
+                      }
+                      if (data.conversation_id) {
+                        this.currentConversationId = data.conversation_id;
+                      }
+                      break;
 
                       case 'message_end':
                         this.isTyping = false;
@@ -283,7 +384,6 @@ export const useChatStore = defineStore('chat', {
                   }
                 }
               }
-            }
           } catch (error) {
             console.error('Stream reading failed:', error);
             message.answer = 'Error: Could not connect to the server.';
