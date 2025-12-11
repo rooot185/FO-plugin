@@ -359,8 +359,19 @@ const handleRegister = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  /* 使用固定定位或背景扩展确保覆盖整个视口 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  /* 确保背景扩展到边缘 */
+  margin: 0;
+  width: 100vw;
+  box-sizing: border-box;
+  overflow: auto; /* 允许滚动 */
 }
 
 .login-card {
@@ -370,6 +381,8 @@ const handleRegister = async () => {
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   padding: 40px 30px;
+  /* 确保卡片居中 */
+  margin: auto;
 }
 
 .login-header {
