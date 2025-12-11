@@ -28,7 +28,7 @@
         <!-- User Message -->
         <div v-if="message.query" class="message-wrapper message-user">
           <div class="message-bubble">
-            <p>{{ message.query }}</p>
+            <p>{{ message.query.replace(/^\s*user:\s*/i, '') }}</p>
           </div>
         </div>
 
@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useChatStore } from '../stores/chat';
 import { marked } from 'marked';
@@ -186,7 +186,16 @@ const handleKeydown = (e) => {
   }
 };
 
-watch(() => chatStore.messages, scrollToBottom, { deep: true });
+// 添加页面加载后的滚动到底部
+onMounted(() => {
+  scrollToBottom();
+});
+
+// 修改监听逻辑，确保每次消息变化都滚动到底部
+watch(() => [...chatStore.messages], () => {
+  scrollToBottom();
+});
+
 watch(() => chatStore.isTyping, scrollToBottom);
 
 </script>

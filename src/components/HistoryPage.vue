@@ -9,7 +9,7 @@
       <div v-else-if="error" class="error-message">{{ error }}</div>
       <ul v-else-if="conversations.length">
         <li v-for="conversation in conversations" :key="conversation.conversation_id" @click="selectConversation(conversation.conversation_id)" class="history-item">
-          <h3>{{ conversation.title || '无标题会话' }}</h3>
+          <h3>{{ conversation.title.replace(/^\s*user:\s*/i, '') || '无标题会话' }}</h3>
           <!-- <p>最后更新: {{ new Date(conversation.lastUpdated).toLocaleString() }}</p> -->
         </li>
       </ul>
